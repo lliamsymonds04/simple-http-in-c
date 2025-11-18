@@ -17,10 +17,10 @@
 static int server_fd = -1;
 
 // structs
-typedef struct {
+struct client_info {
   int client_fd;
   struct sockaddr_in client_addr;
-} client_info;
+};
 
 typedef struct {
   char *name;
@@ -41,6 +41,49 @@ void free_headers(http_header *headers, int count) {
     free(headers[i].value);
   }
   free(headers);
+}
+
+int parse_headers(char *buffer, http_header **headers, int *count) {
+  char *line = strtok(buffer, "\r\n");
+  int capacity = 0;
+  while ((line = strtok(NULL, "\r\n")) != NULL) {
+    if (strlen(line) == 0) {
+      break; // End of headers
+    }
+
+    char header_name[256], header_value[256];
+    sscanf(line, "%255[^:]: %255[^\r\n]", header_name, header_value);
+
+    if (*count >= capacity) {
+      capacity = (capacity == 0) ? 4 : capacity * 2;
+      http_header *temp = realloc(*headers, capacity * sizeof(http_header));
+      if (temp == NULL) {
+        perror("realloc failed");
+        return -1;
+      }
+      *headers = temp;
+    }
+
+    size_t name_len = strlen(header_name) + 1;
+    (*headers)[*count].name = malloc(name_len);
+    if ((*headers)[*count].name == NULL) {
+      perror("malloc failed");
+      return -1;
+    }
+    strcpy((*headers)[*count].name, header_name);
+
+    size_t value_len = strlen(header_value) + 1;
+    (*headers)[*count].value = malloc(value_len);
+    if ((*headers)[*count].value == NULL) {
+      perror("malloc failed");
+      return -1;
+    }
+    strcpy((*headers)[*count].value, header_value);
+
+    *count = *count + 1;
+  }
+
+  return 0;
 }
 
 void handle_client(int client_fd, struct sockaddr_in *client_addr) {
@@ -77,37 +120,13 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
     sscanf(buffer, "%15s %255s %15s", method, path, version);
 
     // Parse headers
-    char *line = strtok(buffer, "\r\n");
+    http_header *headers = NULL;
     int header_count = 0;
-    int capacity = 0;
-    http_header *headers;
-    while ((line = strtok(NULL, "\r\n")) != NULL) {
-      if (strlen(line) == 0) {
-        break; // End of headers
-      }
 
-      char header_name[256], header_value[256];
-      sscanf(line, "%255[^:]: %255[^\r\n]", header_name, header_value);
-
-      if (header_count >= capacity) {
-        capacity = (capacity == 0) ? 4 : capacity * 2;
-        headers = realloc(headers, capacity * sizeof(http_header));
-        if (headers == NULL) {
-          perror("realloc failed");
-          close(client_fd);
-          return;
-        }
-      }
-
-      size_t name_len = strlen(header_name) + 1;
-      headers[header_count].name = malloc(name_len);
-      strcpy(headers[header_count].name, header_name);
-
-      size_t value_len = strlen(header_value) + 1;
-      headers[header_count].value = malloc(value_len);
-      strcpy(headers[header_count].value, header_value);
-
-      header_count++;
+    if (parse_headers(buffer, &headers, &header_count) < 0) {
+      perror("Failed to parse headers");
+      close(client_fd);
+      return;
     }
 
     char *response = "Message received\n";
