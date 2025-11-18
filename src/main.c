@@ -1,11 +1,24 @@
 #include <arpa/inet.h>
+#include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #define PORT 8080
 #define BACKLOG 5
+
+// global
+static int server_fd = -1;
+
+void handle_signal(int sig) {
+  printf("\nGracefully shutting down server...\n");
+  if (server_fd != -1) {
+    close(server_fd);
+  }
+  exit(0);
+}
 
 int create_server_socket(int port) {
   int sockfd;
@@ -46,7 +59,11 @@ int create_server_socket(int port) {
 }
 
 int main(int argc, char *argv[]) {
-  int server_fd = create_server_socket(PORT);
+  // signal handling
+  signal(SIGINT, handle_signal);
+  signal(SIGTERM, handle_signal);
+
+  server_fd = create_server_socket(PORT);
 
   if (server_fd < 0) {
     perror("Failed to create server socket");
