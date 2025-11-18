@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,12 @@
 
 // global
 static int server_fd = -1;
+
+// structs
+struct client_info {
+  int client_fd;
+  struct sockaddr_in client_addr;
+};
 
 void handle_signal(int sig) {
   printf("\nGracefully shutting down server...\n");
@@ -58,6 +65,13 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
 
   close(client_fd);
   printf("Connection closed");
+}
+
+void *client_thread(void *arg) {
+  struct client_info *cinfo = (struct client_info *)arg;
+  handle_client(cinfo->client_fd, &cinfo->client_addr);
+  free(cinfo);
+  return NULL;
 }
 
 int create_server_socket(int port) {
@@ -125,9 +139,12 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    handle_client(client_fd, &client_addr);
-
-    close(client_fd);
+    pthread_t thread_id;
+    struct client_info *cinfo = malloc(sizeof(struct client_info));
+    cinfo->client_fd = client_fd;
+    cinfo->client_addr = client_addr;
+    pthread_create(&thread_id, NULL, client_thread, cinfo);
+    pthread_detach(thread_id);
   }
 
   close(server_fd);
