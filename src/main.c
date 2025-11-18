@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -44,4 +45,36 @@ int create_server_socket(int port) {
   return sockfd;
 }
 
-int main(int argc, char *argv[]) { return 0; }
+int main(int argc, char *argv[]) {
+  int server_fd = create_server_socket(PORT);
+
+  if (server_fd < 0) {
+    perror("Failed to create server socket");
+    return 1;
+  }
+
+  printf("Server listening on port %d\n", PORT);
+
+  // accept and handle connections
+  while (1) {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+
+    int client_fd =
+        accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+
+    if (client_fd < 0) {
+      perror("Failed to accept connection");
+      continue;
+    }
+
+    printf("Accepted connection from %s:%d\n", inet_ntoa(client_addr.sin_addr),
+           ntohs(client_addr.sin_port));
+
+    close(client_fd);
+  }
+
+  close(server_fd);
+
+  return 0;
+}
