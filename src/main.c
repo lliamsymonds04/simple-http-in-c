@@ -4,10 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #define PORT 8080
 #define BACKLOG 5
+#define BUFFER_SIZE 4096
 
 // global
 static int server_fd = -1;
@@ -18,6 +20,44 @@ void handle_signal(int sig) {
     close(server_fd);
   }
   exit(0);
+}
+
+void handle_client(int client_fd, struct sockaddr_in *client_addr) {
+  char buffer[BUFFER_SIZE];
+  char client_ip[INET_ADDRSTRLEN];
+
+  // get client ip address
+  inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, sizeof(client_ip));
+  printf("Client connected: %s:%d\n", client_ip, ntohs(client_addr->sin_port));
+
+  ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+
+  if (bytes_received < 0) {
+    perror("recv failed");
+    close(client_fd);
+    return;
+  }
+
+  if (bytes_received == 0) {
+    printf("Client disconnected: %s:%d\n", client_ip,
+           ntohs(client_addr->sin_port));
+    close(client_fd);
+    return;
+  }
+
+  buffer[bytes_received] = '\0';
+  printf("Received from %s:%d: %s\n", client_ip, ntohs(client_addr->sin_port),
+         buffer);
+
+  char *response = "Message received\n";
+  ssize_t bytes_sent = send(client_fd, response, strlen(response), 0);
+
+  if (bytes_sent < 0) {
+    perror("send failed");
+  }
+
+  close(client_fd);
+  printf("Connection closed");
 }
 
 int create_server_socket(int port) {
@@ -85,8 +125,7 @@ int main(int argc, char *argv[]) {
       continue;
     }
 
-    printf("Accepted connection from %s:%d\n", inet_ntoa(client_addr.sin_addr),
-           ntohs(client_addr.sin_port));
+    handle_client(client_fd, &client_addr);
 
     close(client_fd);
   }
