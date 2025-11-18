@@ -11,15 +11,21 @@
 #define PORT 8080
 #define BACKLOG 5
 #define BUFFER_SIZE 4096
+#define MAX_HEADERS 32
 
 // global
 static int server_fd = -1;
 
 // structs
-struct client_info {
+typedef struct {
   int client_fd;
   struct sockaddr_in client_addr;
-};
+} client_info;
+
+typedef struct {
+  char *name;
+  char *value;
+} http_header;
 
 void handle_signal(int sig) {
   printf("\nGracefully shutting down server...\n");
@@ -27,6 +33,14 @@ void handle_signal(int sig) {
     close(server_fd);
   }
   exit(0);
+}
+
+void free_headers(http_header *headers, int count) {
+  for (int i = 0; i < count; i++) {
+    free(headers[i].name);
+    free(headers[i].value);
+  }
+  free(headers);
 }
 
 void handle_client(int client_fd, struct sockaddr_in *client_addr) {
@@ -53,12 +67,53 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
       return;
     }
 
+    // Terminate buffer
     buffer[bytes_received] = '\0';
     printf("Received from %s:%d: %s\n", client_ip, ntohs(client_addr->sin_port),
            buffer);
 
+    // Parse request line
+    char method[16], path[256], version[16];
+    sscanf(buffer, "%15s %255s %15s", method, path, version);
+
+    // Parse headers
+    char *line = strtok(buffer, "\r\n");
+    int header_count = 0;
+    int capacity = 0;
+    http_header *headers;
+    while ((line = strtok(NULL, "\r\n")) != NULL) {
+      if (strlen(line) == 0) {
+        break; // End of headers
+      }
+
+      char header_name[256], header_value[256];
+      sscanf(line, "%255[^:]: %255[^\r\n]", header_name, header_value);
+
+      if (header_count >= capacity) {
+        capacity = (capacity == 0) ? 4 : capacity * 2;
+        headers = realloc(headers, capacity * sizeof(http_header));
+        if (headers == NULL) {
+          perror("realloc failed");
+          close(client_fd);
+          return;
+        }
+      }
+
+      size_t name_len = strlen(header_name) + 1;
+      headers[header_count].name = malloc(name_len);
+      strcpy(headers[header_count].name, header_name);
+
+      size_t value_len = strlen(header_value) + 1;
+      headers[header_count].value = malloc(value_len);
+      strcpy(headers[header_count].value, header_value);
+
+      header_count++;
+    }
+
     char *response = "Message received\n";
     ssize_t bytes_sent = send(client_fd, response, strlen(response), 0);
+
+    free_headers(headers, header_count);
 
     if (bytes_sent < 0) {
       perror("send failed");
