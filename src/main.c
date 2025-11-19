@@ -11,7 +11,6 @@
 #define PORT 8080
 #define BACKLOG 5
 #define BUFFER_SIZE 4096
-#define MAX_HEADERS 32
 
 // global
 static int server_fd = -1;
@@ -86,7 +85,31 @@ int parse_headers(char *buffer, http_header **headers, int *count) {
   return 0;
 }
 
-void not_found_reponse(char *reponse, size_t *response_length) {
+const char *get_mime_type(const char *path) {
+  const char *ext = strrchr(path, '.');
+  if (!ext) {
+    return "application/octet-stream";
+  }
+  if (strcmp(ext, ".html") == 0 || strcmp(ext, ".htm") == 0) {
+    return "text/html";
+  } else if (strcmp(ext, ".css") == 0) {
+    return "text/css";
+  } else if (strcmp(ext, ".js") == 0) {
+    return "application/javascript";
+  } else if (strcmp(ext, ".png") == 0) {
+    return "image/png";
+  } else if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) {
+    return "image/jpeg";
+  } else if (strcmp(ext, ".gif") == 0) {
+    return "image/gif";
+  } else if (strcmp(ext, ".txt") == 0) {
+    return "text/plain";
+  } else {
+    return "application/octet-stream";
+  }
+}
+
+void not_found_response(char *reponse, size_t *response_length) {
   const char *body = "<html><body><h1>404 Not Found</h1></body></html>";
   const char *header = "HTTP/1.1 404 Not Found\r\n"
                        "Content-Type: text/html\r\n"
@@ -145,7 +168,7 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
     // Build response
     char *response = (char *)malloc(BUFFER_SIZE * sizeof(char));
     size_t response_length;
-    not_found_reponse(response, &response_length);
+    not_found_response(response, &response_length);
 
     ssize_t bytes_sent = send(client_fd, response, response_length, 0);
 
