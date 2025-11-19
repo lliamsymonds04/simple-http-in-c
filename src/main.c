@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -168,7 +169,53 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
     // Build response
     char *response = (char *)malloc(BUFFER_SIZE * sizeof(char));
     size_t response_length;
-    not_found_response(response, &response_length);
+    if (strcmp(method, "GET") == 0) {
+      // join public directory with path
+      char full_path[512];
+      sprintf(full_path, "public%s", path);
+
+      // attempt to open the requested file
+      int file_fd = open(full_path, O_RDONLY);
+      if (file_fd < 0) {
+        // File not found, respond with 404
+        not_found_response(response, &response_length);
+      } else {
+        // get the file size
+        off_t file_size = lseek(file_fd, 0, SEEK_END);
+        lseek(file_fd, 0, SEEK_SET);
+
+        // build header
+        const char *mime_type = get_mime_type(path);
+        char *header = (char *)malloc(BUFFER_SIZE * sizeof(char));
+        int header_len = sprintf(header,
+                                 "HTTP/1.1 200 OK\r\n"
+                                 "Content-Type: %s\r\n"
+                                 "Content-Length: %zu\r\n"
+                                 "\r\n",
+                                 mime_type, file_size);
+
+        // File found, read content
+        ssize_t file_bytes =
+            read(file_fd, response + header_len, BUFFER_SIZE - header_len);
+        close(file_fd);
+
+        if (file_bytes < 0) {
+          perror("Failed to read file");
+          free(header);
+          free(response);
+          close(client_fd);
+          return;
+        }
+
+        // Build full response
+        memcpy(response, header, header_len);
+        response_length = header_len + file_bytes;
+      }
+
+    } else {
+      // Method not supported, respond with 404
+      not_found_response(response, &response_length);
+    }
 
     ssize_t bytes_sent = send(client_fd, response, response_length, 0);
 
