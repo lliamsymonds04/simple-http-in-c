@@ -86,6 +86,19 @@ int parse_headers(char *buffer, http_header **headers, int *count) {
   return 0;
 }
 
+void not_found_reponse(char *reponse, size_t *response_length) {
+  const char *body = "<html><body><h1>404 Not Found</h1></body></html>";
+  const char *header = "HTTP/1.1 404 Not Found\r\n"
+                       "Content-Type: text/html\r\n"
+                       "Content-Length: %zu\r\n"
+                       "\r\n";
+
+  size_t body_length = strlen(body);
+  *response_length = snprintf(reponse, BUFFER_SIZE, header, body_length);
+  strcat(reponse, body);
+  *response_length += body_length;
+}
+
 void handle_client(int client_fd, struct sockaddr_in *client_addr) {
   char buffer[BUFFER_SIZE];
   char client_ip[INET_ADDRSTRLEN];
@@ -129,8 +142,12 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
       return;
     }
 
-    char *response = "Message received\n";
-    ssize_t bytes_sent = send(client_fd, response, strlen(response), 0);
+    // Build response
+    char *response = (char *)malloc(BUFFER_SIZE * sizeof(char));
+    size_t response_length;
+    not_found_reponse(response, &response_length);
+
+    ssize_t bytes_sent = send(client_fd, response, response_length, 0);
 
     free_headers(headers, header_count);
 
