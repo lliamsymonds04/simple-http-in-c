@@ -188,7 +188,11 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
     if (strcmp(method, "GET") == 0) {
       // join public directory with path
       char full_path[512];
-      sprintf(full_path, "public%s", path);
+      if (strcmp(path, "/") == 0) {
+        sprintf(full_path, "public/index.html");
+      } else {
+        sprintf(full_path, "public%s", path);
+      }
 
       // attempt to open the requested file
       int file_fd = open(full_path, O_RDONLY);
@@ -201,7 +205,7 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
         lseek(file_fd, 0, SEEK_SET);
 
         // build header
-        const char *mime_type = get_mime_type(path);
+        const char *mime_type = get_mime_type(full_path);
         char *header = (char *)malloc(BUFFER_SIZE * sizeof(char));
         int header_len = sprintf(header,
                                  "HTTP/1.1 200 OK\r\n"
@@ -223,7 +227,6 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
 
         close(file_fd);
       }
-
     } else {
       not_found_response(client_fd);
     }
