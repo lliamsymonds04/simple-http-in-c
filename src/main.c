@@ -110,17 +110,36 @@ const char *get_mime_type(const char *path) {
   }
 }
 
-void not_found_response(char *reponse, size_t *response_length) {
+ssize_t send_all(int sockfd, const void *buf, size_t len) {
+  size_t total_sent = 0;
+  const char *buffer = (const char *)buf;
+
+  while (total_sent < len) {
+    ssize_t bytes_sent = send(sockfd, buffer + total_sent, len - total_sent, 0);
+    if (bytes_sent < 0) {
+      return -1;
+    }
+    total_sent += bytes_sent;
+  }
+
+  return total_sent;
+}
+
+void not_found_response(int sockfd) {
   const char *body = "<html><body><h1>404 Not Found</h1></body></html>";
   const char *header = "HTTP/1.1 404 Not Found\r\n"
                        "Content-Type: text/html\r\n"
                        "Content-Length: %zu\r\n"
                        "\r\n";
 
+  char response[BUFFER_SIZE];
+
   size_t body_length = strlen(body);
-  *response_length = snprintf(reponse, BUFFER_SIZE, header, body_length);
-  strcat(reponse, body);
-  *response_length += body_length;
+  size_t response_length = snprintf(response, BUFFER_SIZE, header, body_length);
+  strcat(response, body);
+  response_length += body_length;
+
+  send_all(sockfd, response, response_length);
 }
 
 void handle_client(int client_fd, struct sockaddr_in *client_addr) {
@@ -129,7 +148,6 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
 
   // get client ip address
   inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, sizeof(client_ip));
-  printf("Client connected: %s:%d\n", client_ip, ntohs(client_addr->sin_port));
 
   while (1) {
     ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
@@ -167,8 +185,6 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
     }
 
     // Build response
-    char *response = (char *)malloc(BUFFER_SIZE * sizeof(char));
-    size_t response_length;
     if (strcmp(method, "GET") == 0) {
       // join public directory with path
       char full_path[512];
@@ -178,7 +194,7 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
       int file_fd = open(full_path, O_RDONLY);
       if (file_fd < 0) {
         // File not found, respond with 404
-        not_found_response(response, &response_length);
+        not_found_response(client_fd);
       } else {
         // get the file size
         off_t file_size = lseek(file_fd, 0, SEEK_END);
@@ -194,35 +210,22 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
                                  "\r\n",
                                  mime_type, file_size);
 
-        // File found, read content
-        ssize_t file_bytes =
-            read(file_fd, response + header_len, BUFFER_SIZE - header_len);
-        close(file_fd);
+        send_all(client_fd, header, header_len);
+        free_headers(headers, header_count);
 
-        if (file_bytes < 0) {
-          perror("Failed to read file");
-          free(header);
-          free(response);
-          close(client_fd);
-          return;
+        char buff[BUFFER_SIZE];
+        ssize_t bytes_read;
+        while (bytes_read = read(file_fd, buff, sizeof(buff)), bytes_read > 0) {
+          if (send_all(client_fd, buff, bytes_read) < 0) {
+            break;
+          }
         }
 
-        // Build full response
-        memcpy(response, header, header_len);
-        response_length = header_len + file_bytes;
+        close(file_fd);
       }
 
     } else {
-      // Method not supported, respond with 404
-      not_found_response(response, &response_length);
-    }
-
-    ssize_t bytes_sent = send(client_fd, response, response_length, 0);
-
-    free_headers(headers, header_count);
-
-    if (bytes_sent < 0) {
-      perror("send failed");
+      not_found_response(client_fd);
     }
   }
 }
