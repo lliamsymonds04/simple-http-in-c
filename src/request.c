@@ -126,7 +126,7 @@ int parse_headers(char *buffer, http_header **headers, int *count) {
   return 0;
 }
 
-int parse_request(int client_fd, HttpRequest *req) {
+int parse_request(int client_fd, HttpRequest *req, int show_request) {
   char buffer[BUFFER_SIZE];
   ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
 
@@ -134,8 +134,10 @@ int parse_request(int client_fd, HttpRequest *req) {
     return -1;
   }
 
-  // Terminate buffer
   buffer[bytes_received] = '\0';
+  if (show_request) {
+    printf("Raw Request:\n%s\n", buffer);
+  }
 
   // Parse request line
   char *line_end = strstr(buffer, "\r\n");

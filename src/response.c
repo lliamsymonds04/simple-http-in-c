@@ -1,9 +1,36 @@
 #include "response.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define BUFFER_SIZE 4096
+
+const char *get_mime_type(const char *path) {
+  const char *ext = strrchr(path, '.');
+  if (!ext) {
+    return "application/octet-stream";
+  }
+  if (strcmp(ext, ".html") == 0 || strcmp(ext, ".htm") == 0) {
+    return "text/html";
+  } else if (strcmp(ext, ".css") == 0) {
+    return "text/css";
+  } else if (strcmp(ext, ".js") == 0) {
+    return "application/javascript";
+  } else if (strcmp(ext, ".png") == 0) {
+    return "image/png";
+  } else if (strcmp(ext, ".jpg") == 0 || strcmp(ext, ".jpeg") == 0) {
+    return "image/jpeg";
+  } else if (strcmp(ext, ".gif") == 0) {
+    return "image/gif";
+  } else if (strcmp(ext, ".txt") == 0) {
+    return "text/plain";
+  } else {
+    return "application/octet-stream";
+  }
+}
 
 ssize_t send_all(int sockfd, const void *buf, size_t len) {
   size_t total_sent = 0;
@@ -48,7 +75,7 @@ void respond_with_file(int client_fd, const char *file_path) {
     lseek(file_fd, 0, SEEK_SET);
 
     // build header
-    const char *mime_type = get_mime_type(full_path);
+    const char *mime_type = get_mime_type(file_path);
     char *header = (char *)malloc(BUFFER_SIZE * sizeof(char));
     int header_len = sprintf(header,
                              "HTTP/1.1 200 OK\r\n"

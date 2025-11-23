@@ -15,7 +15,7 @@ void http_shutdown() {
   }
 };
 
-void handle_signal() {
+void handle_signal(int sig) {
   printf("\nGracefully shutting down server...\n");
   http_shutdown();
   exit(0);

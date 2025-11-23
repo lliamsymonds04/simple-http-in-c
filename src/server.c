@@ -10,6 +10,7 @@
 
 #define BACKLOG 5
 #define BUFFER_SIZE 4096
+#define SHOW_REQUEST 1
 
 // structs
 struct client_info {
@@ -24,11 +25,8 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
   inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, sizeof(client_ip));
 
   while (1) {
-    // printf("Client disconnected: %s:%d\n", client_ip,
-    //        ntohs(client_addr->sin_port));
-
     HttpRequest *req = malloc(sizeof(HttpRequest));
-    if (parse_request(client_fd, req) < 0) {
+    if (parse_request(client_fd, req, SHOW_REQUEST) < 0) {
       free(req);
       perror("Failed to parse request");
       close(client_fd);
