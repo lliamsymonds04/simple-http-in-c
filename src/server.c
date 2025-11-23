@@ -25,7 +25,6 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
   inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, sizeof(client_ip));
 
   while (1) {
-
     HttpRequest *req = malloc(sizeof(HttpRequest));
     char buffer[BUFFER_SIZE];
     int status = parse_request(client_fd, buffer, BUFFER_SIZE, req);

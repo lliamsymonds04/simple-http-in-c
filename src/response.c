@@ -103,5 +103,8 @@ void handle_route(int client_fd, const char *route) {
     // respond with index page
     respond_with_file(client_fd, "public/index.html");
   } else {
+    char file_path[512];
+    sprintf(file_path, "public%s", route);
+    respond_with_file(client_fd, file_path);
   }
 }
