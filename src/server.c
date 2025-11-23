@@ -25,14 +25,21 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
   inet_ntop(AF_INET, &client_addr->sin_addr, client_ip, sizeof(client_ip));
 
   while (1) {
+
     HttpRequest *req = malloc(sizeof(HttpRequest));
-    if (parse_request(client_fd, req, SHOW_REQUEST) < 0) {
+    char buffer[BUFFER_SIZE];
+    int status = parse_request(client_fd, buffer, BUFFER_SIZE, req);
+    if (status <= 0) {
+      if (status == -1) {
+        perror("Failed to parse request");
+      }
       free(req);
-      perror("Failed to parse request");
       close(client_fd);
       return;
+    } else {
+      printf("Received from %s:%d\n %s\n", client_ip,
+             ntohs(client_addr->sin_port), buffer);
     }
-    printf("Received from %s:%d", client_ip, ntohs(client_addr->sin_port));
 
     // Build response
     if (strcmp(req->method, "GET") == 0) {
@@ -40,6 +47,8 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
     } else {
       not_found_response(client_fd);
     }
+
+    free(req);
   }
 }
 

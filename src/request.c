@@ -7,18 +7,17 @@
 
 #define BUFFER_SIZE 4096
 
-int parse_request(int client_fd, HttpRequest *req, int show_request) {
-  char buffer[BUFFER_SIZE];
-  ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
+int parse_request(int client_fd, char *buffer, size_t buffer_size,
+                  HttpRequest *req) {
+  ssize_t bytes_received = recv(client_fd, buffer, buffer_size - 1, 0);
 
-  if (bytes_received <= 0) {
+  if (bytes_received < 0) {
     return -1;
+  } else if (bytes_received == 0) {
+    return 0; // Connection closed
   }
 
   buffer[bytes_received] = '\0';
-  if (show_request) {
-    printf("Raw Request:\n%s\n", buffer);
-  }
 
   // Parse request line
   char *line_end = strstr(buffer, "\r\n");
@@ -30,5 +29,5 @@ int parse_request(int client_fd, HttpRequest *req, int show_request) {
   sscanf(buffer, "%15s %255s %15s", req->method, req->path, req->version);
   *line_end = '\r'; // Restore for header parsing
 
-  return 0;
+  return 1;
 }

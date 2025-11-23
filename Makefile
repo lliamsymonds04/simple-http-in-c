@@ -4,8 +4,8 @@ CFLAGS=-Wall -Wextra -O2 -Iinclude -pthread
 SRC=$(wildcard src/*.c)
 OBJ=$(SRC:.c=.o)
 
-libhttp.a: $(OBJ)
-	ar rcs $@ $^
+http-server: $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	rm -f src/*.o libhttp.a
+	rm -f src/*.o http-server
