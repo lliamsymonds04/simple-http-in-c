@@ -34,4 +34,7 @@ int http_listen(int port) {
   }
 
   printf("Server listening on port %d\n", port);
+  server_listen(server_fd);
+
+  return 0;
 }

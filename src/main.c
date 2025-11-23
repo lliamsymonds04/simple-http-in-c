@@ -1,4 +1,5 @@
 #include "request.h"
+#include "response.h"
 #include "server.h"
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -29,38 +30,6 @@ void handle_signal() {
     close(server_fd);
   }
   exit(0);
-}
-
-ssize_t send_all(int sockfd, const void *buf, size_t len) {
-  size_t total_sent = 0;
-  const char *buffer = (const char *)buf;
-
-  while (total_sent < len) {
-    ssize_t bytes_sent = send(sockfd, buffer + total_sent, len - total_sent, 0);
-    if (bytes_sent < 0) {
-      return -1;
-    }
-    total_sent += bytes_sent;
-  }
-
-  return total_sent;
-}
-
-void not_found_response(int sockfd) {
-  const char *body = "<html><body><h1>404 Not Found</h1></body></html>";
-  const char *header = "HTTP/1.1 404 Not Found\r\n"
-                       "Content-Type: text/html\r\n"
-                       "Content-Length: %zu\r\n"
-                       "\r\n";
-
-  char response[BUFFER_SIZE];
-
-  size_t body_length = strlen(body);
-  size_t response_length = snprintf(response, BUFFER_SIZE, header, body_length);
-  strcat(response, body);
-  response_length += body_length;
-
-  send_all(sockfd, response, response_length);
 }
 
 void handle_client(int client_fd, struct sockaddr_in *client_addr) {
