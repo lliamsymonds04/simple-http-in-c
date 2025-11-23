@@ -12,7 +12,6 @@
 #include <unistd.h>
 
 #define PORT 8080
-#define BACKLOG 5
 #define BUFFER_SIZE 4096
 
 // global
