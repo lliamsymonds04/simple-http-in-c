@@ -13,10 +13,18 @@ typedef struct {
   char version[16];
 } HttpRequest;
 
+typedef struct {
+  char **keys;
+  char **values;
+  int count;
+} UrlParams;
+
 const char *get_mime_type(const char *path);
 int parse_headers(char *buffer, http_header **headers, int *count);
 void free_headers(http_header *headers, int count);
 int parse_request(int client_fd, char *buffer, size_t buffer_size,
                   HttpRequest *req);
+void parse_url_params(const char *query_string, UrlParams *params);
+void free_url_params(UrlParams *params);
 
 #endif
