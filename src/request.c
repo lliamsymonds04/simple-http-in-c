@@ -31,3 +31,6 @@ int parse_request(int client_fd, char *buffer, size_t buffer_size,
 
   return 1;
 }
+
+void parse_url_params(const char *query_string, UrlParams *params);
+void free_url_params(UrlParams *params);
