@@ -1,7 +1,9 @@
 #include "request.h"
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -32,5 +34,74 @@ int parse_request(int client_fd, char *buffer, size_t buffer_size,
   return 1;
 }
 
-void parse_url_params(const char *query_string, UrlParams *params);
-void free_url_params(UrlParams *params);
+char *extract_query_string(const char *path) {
+  const char *query_start = strchr(path, '?');
+  if (!query_start) {
+    return NULL;
+  }
+  return strdup(query_start + 1);
+}
+
+void parse_url_params(const char *query_string, UrlParams *params) {
+  params->count = 0;
+  params->keys = NULL;
+  params->values = NULL;
+
+  if (!query_string || query_string[0] == '\0') {
+    return;
+  }
+
+  char *query_dup = strdup(query_string);
+
+  char *temp = strdup(query_dup);
+  char *pair = strtok(temp, "&");
+  while (pair != NULL) {
+    params->count++;
+    pair = strtok(NULL, "&");
+  }
+  free(temp);
+
+  params->keys = malloc(params->count * sizeof(char *));
+  params->values = malloc(params->count * sizeof(char *));
+
+  // Second pass to fill keys and values
+  int i = 0;
+  pair = strtok(query_dup, "&");
+  while (pair != NULL) {
+    char *equal_sign = strchr(pair, '=');
+    if (equal_sign) {
+      *equal_sign = '\0';
+      params->keys[i] = strdup(pair);
+      params->values[i] = strdup(equal_sign + 1);
+    } else {
+      params->keys[i] = strdup(pair);
+      params->values[i] = strdup("");
+    }
+    i++;
+    pair = strtok(NULL, "&");
+  }
+
+  free(query_dup);
+}
+
+void url_decode(char *dst, const char *src) {
+  while (*src) {
+    if (*src == '%' && isxdigit(src[1]) && isxdigit(src[2])) {
+      char hex[3] = {src[1], src[2], '\0'};
+      *dst++ = (char)strtol(hex, NULL, 16);
+      src += 3;
+    } else if (*src == '+') {
+      *dst++ = ' ';
+      src++;
+    } else {
+      *dst++ = *src++;
+    }
+  }
+  *dst = '\0';
+}
+
+void free_url_params(UrlParams *params) {
+  free(params->keys);
+  free(params->values);
+  free(params);
+};

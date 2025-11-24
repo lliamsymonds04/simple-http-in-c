@@ -6,5 +6,6 @@
 ssize_t send_all(int sockfd, const void *buf, size_t len);
 void not_found_response(int sockfd);
 void handle_route(int client_fd, const char *path);
+void respond_with_file(int client_fd, const char *file_path);
 
 #endif
