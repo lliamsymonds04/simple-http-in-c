@@ -1,6 +1,7 @@
 #include "server.h"
 #include "request.h"
 #include "response.h"
+#include "router.h"
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -42,7 +43,10 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
 
     // Build response
     if (strcmp(req->method, "GET") == 0) {
-      handle_route(client_fd, req->path);
+      if (!match_and_handle_route(client_fd, req->path)) {
+        //  not_found_response(client_fd);
+        handle_route(client_fd, req->path);
+      }
     } else {
       not_found_response(client_fd);
     }

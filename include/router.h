@@ -11,6 +11,6 @@ typedef struct {
 } Route;
 
 void register_route(const char *pattern, RouteHandler handler);
-void match_and_handle_route(int client_fd, const char *path);
+int match_and_handle_route(int client_fd, const char *path);
 
 #endif
