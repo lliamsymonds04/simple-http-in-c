@@ -9,7 +9,7 @@ void http_init();
 int http_listen(int port);
 
 // Assign a handler to a route pattern
-int http_route(const char *pattern, RouteHandler handler);
+int http_register_route(const char *pattern, RouteHandler handler);
 
 // Get the param value by key from UrlParams
 void *get_param_value(UrlParams *params, const char *key);

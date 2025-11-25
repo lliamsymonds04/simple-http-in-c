@@ -40,7 +40,7 @@ int http_listen(int port) {
   return 0;
 }
 
-int http_route(const char *pattern, RouteHandler handler) {
+int http_register_route(const char *pattern, RouteHandler handler) {
   register_route(pattern, handler);
   return 0;
 }
