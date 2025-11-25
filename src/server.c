@@ -43,8 +43,16 @@ void handle_client(int client_fd, struct sockaddr_in *client_addr) {
 
     // Build response
     if (strcmp(req->method, "GET") == 0) {
-      if (!match_and_handle_route(client_fd, req->path)) {
-        //  not_found_response(client_fd);
+      HttpResponse *handler_result = NULL;
+      if (match_and_handle_route(req->path, &handler_result)) {
+        if (handler_result != NULL) {
+          send_response(client_fd, handler_result);
+
+          free_http_response(handler_result);
+        } else {
+          handle_route(client_fd, req->path);
+        }
+      } else {
         handle_route(client_fd, req->path);
       }
     } else {

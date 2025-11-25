@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -22,7 +23,7 @@ void register_route(const char *pattern, RouteHandler handler) {
   route_count++;
 }
 
-int match_and_handle_route(int client_fd, const char *path) {
+int match_and_handle_route(const char *path, HttpResponse **handler_result) {
   char path_copy[512];
   char *query_string = NULL;
   strcpy(path_copy, path);
@@ -35,10 +36,11 @@ int match_and_handle_route(int client_fd, const char *path) {
 
   for (int i = 0; i < route_count; i++) {
     if (strcmp(routes[i].pattern, path_copy) == 0) {
-      UrlParams params;
-      parse_url_params(query_string, &params);
-      routes[i].handler(client_fd, &params);
-      free_url_params(&params);
+      UrlParams *params = malloc(sizeof(UrlParams));
+      parse_url_params(query_string, params);
+      *handler_result = routes[i].handler(params);
+      free_url_params(params);
+
       return 1; // Route matched and handled
     }
   }

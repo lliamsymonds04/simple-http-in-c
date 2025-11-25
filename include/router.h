@@ -2,8 +2,9 @@
 #define ROUTER_H
 
 #include "request.h"
+#include "response.h"
 
-typedef void (*RouteHandler)(int client_fd, UrlParams *params);
+typedef HttpResponse *(*RouteHandler)(UrlParams *params);
 
 typedef struct {
   char *pattern;
@@ -11,6 +12,6 @@ typedef struct {
 } Route;
 
 void register_route(const char *pattern, RouteHandler handler);
-int match_and_handle_route(int client_fd, const char *path);
+int match_and_handle_route(const char *path, HttpResponse **result);
 
 #endif

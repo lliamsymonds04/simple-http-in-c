@@ -3,6 +3,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 // Global server file descriptor
@@ -37,4 +38,18 @@ int http_listen(int port) {
   server_listen(server_fd);
 
   return 0;
+}
+
+int http_route(const char *pattern, RouteHandler handler) {
+  register_route(pattern, handler);
+  return 0;
+}
+
+void *get_param_value(UrlParams *params, const char *key) {
+  for (int i = 0; i < params->count; i++) {
+    if (strcmp(params->keys[i], key) == 0) {
+      return params->values[i];
+    }
+  }
+  return NULL;
 }

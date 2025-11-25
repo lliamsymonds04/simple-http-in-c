@@ -47,21 +47,57 @@ ssize_t send_all(int sockfd, const void *buf, size_t len) {
   return total_sent;
 }
 
+const char *reason_phrase(int code) {
+  switch (code) {
+  case 200:
+    return "OK";
+  case 400:
+    return "Bad Request";
+  case 404:
+    return "Not Found";
+  case 500:
+    return "Internal Server Error";
+  default:
+    return ""; // generic fallback
+  }
+}
+
+void send_response(int clientfd, HttpResponse *response) {
+  const char *reason = reason_phrase(response->status);
+  const int body_length = strlen(response->body);
+
+  char header[256];
+  int header_len = sprintf(header,
+                           "HTTP/1.1 %d %s\r\n"
+                           "Content-Length: %d\r\n"
+                           "Content-Type: text/plain\r\n"
+                           "\r\n",
+                           response->status, reason, body_length);
+
+  if (header_len < 0) {
+    return;
+  }
+
+  size_t total_length = header_len + body_length;
+
+  char *buffer = malloc(total_length);
+  if (!buffer) {
+    return;
+  }
+
+  memcpy(buffer, header, header_len);
+  memcpy(buffer + header_len, response->body, body_length);
+
+  send_all(clientfd, buffer, total_length);
+
+  free(buffer);
+}
+
 void not_found_response(int sockfd) {
-  const char *body = "<html><body><h1>404 Not Found</h1></body></html>";
-  const char *header = "HTTP/1.1 404 Not Found\r\n"
-                       "Content-Type: text/html\r\n"
-                       "Content-Length: %zu\r\n"
-                       "\r\n";
-
-  char response[BUFFER_SIZE];
-
-  size_t body_length = strlen(body);
-  size_t response_length = snprintf(response, BUFFER_SIZE, header, body_length);
-  strcat(response, body);
-  response_length += body_length;
-
-  send_all(sockfd, response, response_length);
+  HttpResponse *response = malloc(sizeof(HttpResponse));
+  response->status = 404;
+  response->body = strdup("<html><body><h1>404 Not Found</h1></body></html>");
+  send_response(sockfd, response);
 }
 
 void respond_with_file(int client_fd, const char *file_path) {
@@ -106,5 +142,14 @@ void handle_route(int client_fd, const char *route) {
     char file_path[512];
     sprintf(file_path, "public%s", route);
     respond_with_file(client_fd, file_path);
+  }
+}
+
+void free_http_response(HttpResponse *response) {
+  if (response) {
+    if (response->body) {
+      free(response->body);
+    }
+    free(response);
   }
 }
