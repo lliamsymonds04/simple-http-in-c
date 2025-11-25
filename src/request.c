@@ -73,7 +73,6 @@ void parse_url_params(const char *query_string, UrlParams *params) {
       *equal_sign = '\0';
       params->keys[i] = strdup(pair);
       params->values[i] = strdup(equal_sign + 1);
-      printf("Parsed param: %s = %s\n", params->keys[i], params->values[i]);
     } else {
       params->keys[i] = strdup(pair);
       params->values[i] = strdup("");
