@@ -20,16 +20,23 @@ HttpResponse *handle_addition(UrlParams *params) {
     return NULL;
   }
   snprintf(response->body, 32, "%f", a + b);
-  printf("Addition result: %s + %s = %s\n", a_raw ? a_raw : "0",
-         b_raw ? b_raw : "0", response->body);
   return response;
 }
 
-int main() {
-  // signal handling
+int main(int argc, char *argv[]) {
   http_init();
+  // connect routes
   http_route("/add", handle_addition);
-  http_listen(DEFAULT_PORT);
+
+  // listen
+  int port = DEFAULT_PORT;
+  if (argc > 1) {
+    int user_port = atoi(argv[1]);
+    if (user_port > 0 && user_port < 65536) {
+      port = user_port;
+    }
+  }
+  http_listen(port);
 
   return 0;
 }
